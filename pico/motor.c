@@ -17,10 +17,10 @@ motor_t *motor_init(uint pin1, uint pin2)
     uint pin_fwd_slice = pwm_gpio_to_slice_num(pin1);
     uint pin_rev_slice = pwm_gpio_to_slice_num(pin2);
 
-    // Signed 8 bit max (-128 to 127)
-    // Each pin gets 1/127 (or 1/128) of granularity
+    // Signed 8 bit max (-127 to 127)
+    // Each pin gets 1/127 (or 1/127) of granularity
     pwm_set_wrap(pin_fwd_slice, 127);
-    pwm_set_wrap(pin_rev_slice, 128);
+    pwm_set_wrap(pin_rev_slice, 127);
 
     pwm_set_gpio_level(pin1, 0);
     pwm_set_gpio_level(pin2, 0);
@@ -47,7 +47,7 @@ void motor_free(motor_t *motor)
 }
 
 /**
- * Set the motor either forward or reverse (-128 -> 127)
+ * Set the motor either forward or reverse (-127 -> 127)
  * 0 is stopped
  * 
  * Follows generic H-bridge setup
@@ -58,6 +58,8 @@ void motor_set(motor_t *motor, int8_t value)
     if(value == motor->value)
         return;
 
+    motor->value = value;
+    
     // 0 speed: coast mode (no movement or resistance)
     if(value == 0)
     {
