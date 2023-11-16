@@ -25,7 +25,7 @@ pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(pico pico.c as5600.c motor.c coms.c)
+add_executable(pico pico.c as5600.c motor.c coms.c odometry.c)
 
 pico_set_program_name(pico "pico")
 pico_set_program_version(pico "0.1")

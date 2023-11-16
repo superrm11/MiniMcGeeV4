@@ -47,6 +47,7 @@
 motor_t *left_front, *left_rear, *right_front, *right_rear;
 
 
+
 int main()
 {
     stdio_init_all();
@@ -57,31 +58,33 @@ int main()
     right_front = motor_init(RF_PWM1, RF_PWM2);
     right_rear = motor_init(RR_PWM1, RR_PWM2);
 
-    bool is_left = true;
-    int i = 0;
+    as5600_i2c_init(L_ENC_I2C, L_ENC_SDA, L_ENC_SCL);
+    as5600_i2c_init(R_ENC_I2C, R_ENC_SDA, R_ENC_SCL);
 
+    int64_t l_enc_ticks_abs = as5600_read_angle(L_ENC_I2C);
+    int64_t r_enc_ticks_abs = as5600_read_angle(R_ENC_I2C);
+
+    int l_enc_offset = l_enc_ticks_abs;
+    int r_enc_offset = r_enc_ticks_abs;
+
+    int64_t l_enc = 0;
+    int64_t r_enc = 0;
     while(true)
     {
-        motor_set(left_front, 127);
-        motor_set(left_rear, 127);
-        motor_set(right_front, 127);
-        motor_set(right_rear, 127);
-        sleep_ms(1000);
-        motor_set(left_front, 0);
-        motor_set(left_rear, 0);
-        motor_set(right_front, 0);
-        motor_set(right_rear, 0);
-        sleep_ms(1000);
-        motor_set(left_front, -127);
-        motor_set(left_rear, -127);
-        motor_set(right_front, -127);
-        motor_set(right_rear, -127);
-        sleep_ms(1000);
-        motor_set(left_front, 0);
-        motor_set(left_rear, 0);
-        motor_set(right_front, 0);
-        motor_set(right_rear, 0);
-        sleep_ms(1000);
+        as5600_get_continuous(L_ENC_I2C, &l_enc_ticks_abs);
+        as5600_get_continuous(R_ENC_I2C, &r_enc_ticks_abs);
+
+        l_enc = -l_enc_ticks_abs + l_enc_offset;
+        r_enc = r_enc_ticks_abs - r_enc_offset;
+
+        // uint16_t r_enc = as5600_read_angle(R_ENC_I2C);
+        // uint16_t l_enc = as5600_read_angle(L_ENC_I2C);
+        printf("L Enc: %lld, R Enc: %lld\n ", l_enc, r_enc);
+        // printf("left: %d, right: %d\n", 0, r_enc);
+        // motor_set(left_front, 127);
+        // sleep_ms(1000);
+        // motor_set(left_front, 0);
+        sleep_ms(100);
     }
 
     return 0;

@@ -26,4 +26,6 @@ void as5600_i2c_init(i2c_inst_t *i2c, uint gpio_sda, uint gpio_scl);
 */
 uint16_t as5600_read_angle(i2c_inst_t *i2c);
 
+void as5600_get_continuous(i2c_inst_t *i2c, int64_t *accum);
+
 #endif

@@ -95,7 +95,8 @@
 			"stdlib.h": "c",
 			"i2c.h": "c",
 			"motor.h": "c",
-			"coms.h": "c"
+			"coms.h": "c",
+			"stdio.h": "c"
 		},
 		"ros.distro": "noetic",
 		"python.autoComplete.extraPaths": [

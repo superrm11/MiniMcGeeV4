@@ -40,3 +40,24 @@ uint16_t as5600_read_angle(i2c_inst_t *i2c)
 
     return out;
 }
+
+void as5600_get_continuous(i2c_inst_t *i2c, int64_t *accum)
+{
+    uint16_t new_val = as5600_read_angle(i2c);
+
+    int delta;
+    if(*accum >= 0)
+        delta = new_val - ((*accum) % 4096);
+    else
+        delta = new_val - 4096 - ((*accum) % 4096);
+
+    // // Jumped from 0 to 0XFFF
+    if(delta > 0 && delta > 4096 / 2)
+        *accum += delta - 4096;
+    // // Jumped from 0XFFF to 0
+    else if(delta < 0 && delta < -4096 / 2)
+        *accum += delta + 4096;
+    else
+        *accum += delta;
+
+}
