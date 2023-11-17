@@ -4,6 +4,7 @@
 #include <hardware/pwm.h>
 #include "motor.h"
 #include "as5600.h"
+#include "odometry.h"
 
 // MINIMCGEE PINOUT:
 // Pin:     Function:
@@ -46,7 +47,14 @@
 
 motor_t *left_front, *left_rear, *right_front, *right_rear;
 
-
+odometry_t odom = {
+    .whealbase_mm = 100,
+    .wheel_diam_mm = 43,
+    .enc_cpr = 4096,
+    .x_mm = 0,
+    .y_mm = 0,
+    .rot_deg = 0
+};
 
 int main()
 {
@@ -77,9 +85,12 @@ int main()
         l_enc = -l_enc_ticks_abs + l_enc_offset;
         r_enc = r_enc_ticks_abs - r_enc_offset;
 
+        odometry_update(&odom, l_enc, r_enc);
+        printf("X: %d, Y: %d, R: %d\n", odom.x_mm, odom.y_mm, odom.rot_deg);
+
         // uint16_t r_enc = as5600_read_angle(R_ENC_I2C);
         // uint16_t l_enc = as5600_read_angle(L_ENC_I2C);
-        printf("L Enc: %lld, R Enc: %lld\n ", l_enc, r_enc);
+        // printf("L Enc: %lld, R Enc: %lld\n ", l_enc, r_enc);
         // printf("left: %d, right: %d\n", 0, r_enc);
         // motor_set(left_front, 127);
         // sleep_ms(1000);

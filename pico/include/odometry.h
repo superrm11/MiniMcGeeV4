@@ -1,8 +1,9 @@
 #ifndef _ODOMETRY_H_
 #define _ODOMETRY_H_
+#include "stdint.h"
 
 typedef struct odometry_s
-{
+{ 
     int whealbase_mm;
     int wheel_diam_mm;
     int enc_cpr;
@@ -13,6 +14,6 @@ typedef struct odometry_s
     int64_t stored_r_enc;
 } odometry_t;
 
-void update(odometry_t* odom, int left_enc, int right_enc);
+void odometry_update(odometry_t* odom, int left_enc, int right_enc);
 
 #endif
