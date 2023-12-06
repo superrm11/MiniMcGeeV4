@@ -10,8 +10,6 @@
 #include "global_var.h"
 #include "pidff.h"
 
-#define clamp(val, lower, upper) ((val < lower) ? lower : (val > upper) ? upper : val)
-
 /**
  * Parse control data and send to pico
  * 
@@ -132,18 +130,18 @@ int main(int argc, char** argv)
 
         // Truncate to int, clamp 8 bit value
         int theta_pid_out = (int)(theta_pid.update(rot_vel));
-
+        
         int left_motors = x_pid_out - theta_pid_out;
         int right_motors = x_pid_out + theta_pid_out;
 
-        uint8_t left_motors_u8 = clamp(left_motors, 0, 255);
-        uint8_t right_motors_u8 = clamp(right_motors, 0, 255);
+        int8_t left_motors_i8 = clamp(left_motors, -127, 127);
+        int8_t right_motors_i8 = clamp(right_motors, -127, 127);
         
         // =============== Send Data (To Pico) ===============
         if(fd != -1)
         {
             char buffer[80];
-            sprintf(buffer, "%u %u", left_motors_u8, right_motors_u8);
+            sprintf(buffer, "%d %d", left_motors_i8, right_motors_i8);
             serialPuts(fd, buffer);
         }
 
