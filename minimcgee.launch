@@ -1,0 +1,5 @@
+<launch>
+	<group ns="minimcgee">
+		<node pkg="minimcgeev4" name="robot" type="robot" />
+	</group>
+</launch>

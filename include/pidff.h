@@ -8,7 +8,6 @@ class PIDFF
     public:
     PIDFF();
 
-    void set_target(double setpt);
     double update(double sensor);
     double kS, kV, kP, kI, kD;
     double target, out;

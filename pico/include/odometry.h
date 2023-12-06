@@ -10,6 +10,9 @@ typedef struct odometry_s
     int x_mm;
     int y_mm;
     int rot_deg;
+    int x_mmps;
+    int y_mmps;
+    int rot_degps;
     int64_t stored_l_enc;
     int64_t stored_r_enc;
 } odometry_t;

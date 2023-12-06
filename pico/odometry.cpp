@@ -1,13 +1,19 @@
 #include "odometry.h"
 #include "stdint.h"
 #include "math.h"
+#include "pico/time.h"
 
 #define MEGAPI 3141593
 #define PI 3.141592654
 #define TWOPI 6.283185308
 
+absolute_time_t t_last;
+int theta_last;
+
 void odometry_update(odometry_t* odom, int left_enc, int right_enc)
 {
+    absolute_time_t t_cur = get_absolute_time();
+    uint time_delta_us = absolute_time_diff_us(t_last, t_cur);
     // Change in encoder value
     double l_enc_delta = left_enc - odom->stored_l_enc;
     double r_enc_delta = right_enc - odom->stored_r_enc;
@@ -40,4 +46,9 @@ void odometry_update(odometry_t* odom, int left_enc, int right_enc)
     odom->x_mm += delta_x_mm;
     odom->y_mm += delta_y_mm;
     odom->rot_deg = theta_deg;
+
+    odom->x_mmps = delta_x_mm * 1000000 / time_delta_us;
+    odom->y_mmps = delta_y_mm * 1000000 / time_delta_us;
+    odom->rot_degps = (theta_deg - theta_last) * 1000000 / time_delta_us;
+    theta_last = theta_deg;
 }

@@ -2,11 +2,6 @@
 
 PIDFF::PIDFF(){};
 
-void PIDFF::set_target(double setpt)
-{
-    target = setpt;
-}
-
 double PIDFF::update(double sensor)
 {
     // Get time delta (micros)
@@ -25,7 +20,7 @@ double PIDFF::update(double sensor)
     double d = kD * deriv_error;
 
     // Feedforward loop
-    double s = kS * (error > 0 ? 1 : -1);
+    double s = kS * ((error > 0) ? 1 : (error < 0) ? -1 : 0);
     double v = kV * target;
 
     return out = p + i + d + s + v;

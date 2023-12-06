@@ -1,86 +1,25 @@
 #include <cstdio>
 #include <cstdlib>
 #include <thread>
-//#include <wiringPi.h>
+#include <atomic>
 #include <wiringSerial.h>
 
 #include "ros/ros.h"
 #include "nav_msgs/Odometry.h"
-#include "minimcgeev4/MM4Ctrl.h"
-#include "simple_watchdog.h"
-// Pico Send Message Format:
-// 8 bytes - Motor 1 Speed
-// 8 bytes - Motor 2 Speed
-// 8 bytes - Motor 3 Speed
-// 8 bytes - Motor 4 Speed
-// 1 bit - Reset Left Encoder
-// 1 bit - Reset Right Encoder
-// 6 bits - Unused
-//
-// Total: 5 bytes
+#include "geometry_msgs/Twist.h"
+#include "global_var.h"
+#include "pidff.h"
 
-#define PICO_SEND_MSG_SIZE 5
-
-// Pico Receive Message Format:
-// 4 bytes: Left Encoder Counter
-// 4 bytes: Right Encoder Counter
-//
-// Total: 8 bytes
-
-#define PICO_RECV_MSG_SIZE 8
-
-int fd;
-
+#define clamp(val, lower, upper) ((val < lower) ? lower : (val > upper) ? upper : val)
 
 /**
  * Parse control data and send to pico
  * 
 */
-void rosget_callback(const minimcgeev4::MM4CtrlConstPtr& ros_data)
+void twist_callback(const geometry_msgs::Twist& ros_data)
 {
-    uint8_t send_data[PICO_SEND_MSG_SIZE];
-    
-    send_data[0] = ros_data->teleop_tank_L; // Front Left
-    send_data[1] = ros_data->teleop_tank_L; // Back Left
-    send_data[2] = ros_data->teleop_tank_R; // Front Right
-    send_data[3] = ros_data->teleop_tank_R; // Back Right
-    send_data[4] = 0b00000001 | 0b00000010; // Reset encoders: TODO
-}
-
-void uartget_callback()
-{
-    int data_index;
-    uint8_t buffer[PICO_RECV_MSG_SIZE];
-    while(true)
-    {
-        // TODO use ros realtime system? (spin())
-        // 100hz constant INCLUDING processing
-
-        data_index = 0;
-        bool data_received = false;
-
-        // while(serialDataAvail(uartfd) > 0)
-        // {
-        //     data_received = true;
-        //     if(data_index >= PICO_RECV_MSG_SIZE)
-        //     {
-        //         //TODO send errors to ROS system
-        //         perror("Incoming data is larger than expected message size! Flushing queue.");
-        //         serialFlush(uartfd);
-        //         break;
-        //     }
-
-        //     buffer[data_index++] = serialGetchar(uartfd);
-        // }
-
-        if(data_received)
-        {
-            //Place into struct
-        }
-
-        //100 hz - 10ms
-        usleep(10 * 1000);
-    }
+    x_mmps_setpt = (int) ros_data.linear.x;
+    theta_mmps_setpt = (int) ros_data.angular.z;
 }
 
 int main(int argc, char** argv)
@@ -89,33 +28,37 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "robot");
 
     ros::NodeHandle n;
-    ros::Subscriber ctrl_sub = n.subscribe("control", 1000, rosget_callback);
+    ros::Subscriber ctrl_sub = n.subscribe("cmd_vel", 1000, twist_callback);
     ros::Publisher odom_pub = n.advertise<nav_msgs::Odometry>("odom", 50);
 
     ros::Time last_time, cur_time;
 
     // ======== Serial initialization ========
-    // Raspberry pi MUST have serial console disabled in raspi-config
-    /*if (wiringPiSetup() < 0);
-    {
-        perror("Failed to set up WiringPi");
-        return -1;
-    }*/
-
     fd = serialOpen("/dev/ttyACM0", 115200);
-    // std::thread uart_thread(uartget_callback);
-
-    ros::Rate r(10.0);
-    while(n.ok())
+    if(fd == -1)
     {
+        perror("Unable to open serial port!\n");
+    }
+
+    // =============== Main Loop ===============
+    ros::Rate r(10.0);
+    while(n.ok() && ros::ok())
+    {
+        
         ros::spinOnce();
 
+
+        // =============== Receive Data (From Pico) ===============
         char x_buf[8];
         char y_buf[8];
         char rot_buf[8];
+        char x_vel_buf[8];
+        char y_vel_buf[8];
+        char rot_vel_buf[8];
+        char line_sense_buf[8];
 
-        int i = 0, xi = 0, yi = 0, zi = 0;
-        while(serialDataAvail(fd))
+        int i = 0, xi = 0, yi = 0, zi = 0, xvi = 0, yvi = 0, zvi = 0, lsi = 0;
+        while(fd != -1 && serialDataAvail(fd))
         {
             char c = serialGetchar(fd);
             if (c == ' ')
@@ -126,24 +69,83 @@ int main(int argc, char** argv)
                 y_buf[yi++] = c;
             else if (i == 5) // Rot
                 rot_buf[zi++] = c;
+            else if (i == 7) // X mmps
+                x_vel_buf[xvi++] = c;
+            else if (i == 9) // Y mmps
+                y_vel_buf[yvi++] = c;
+            else if (i == 11) // Rot mmps
+                rot_vel_buf[zvi++] = c;
+            else if (i == 13) // Line Sensor
+                line_sense_buf[lsi++] = c;
         }
         x_buf[xi] = '\0';
         y_buf[yi] = '\0';
         rot_buf[zi] = '\0';
+        x_vel_buf[xvi] = '\0';
+        y_vel_buf[yvi] = '\0';
+        rot_vel_buf[zvi] = '\0';
+        line_sense_buf[lsi] = '\0';
 
         int x = atoi(x_buf);
         int y = atoi(y_buf);
         int rot = atoi(rot_buf);
-
-        // printf("x=%d, y=%d, rot=%d\n", x, y, rot);
-
-        nav_msgs::Odometry odom;
+        int x_vel = atoi(x_vel_buf);
+        int y_vel = atoi(y_vel_buf);
+        int rot_vel = atoi(rot_vel_buf);
+        int line_sense = atoi(line_sense_buf);
 
         odom.pose.pose.position.x = x;
         odom.pose.pose.position.y = y;
         odom.pose.pose.orientation.z = rot;
+        odom.twist.twist.linear.x = x_vel;
+        odom.twist.twist.linear.y = y_vel;
+        odom.twist.twist.angular.z = rot_vel;
 
         odom_pub.publish(odom);
+
+        // =============== Calculate Motor Velocities ===============
+        // PID Units:
+        //  kS: 8-bit steps (Minimum to overcome friction)
+        //  kV: 8-bit steps per millimeter/sec (Linear)
+        //  kP: 8-bit steps per delta millimeter/sec measured
+        //  kD: 8-bit steps per delta millimeter measured
+        //  kI: 8-bit steps per delta millimeter/sec^2 measured
+
+        static PIDFF x_pid, theta_pid;
+
+        x_pid.target = x_mmps_setpt;
+
+        x_pid.kS = 0; 
+        x_pid.kV = 0; 
+        x_pid.kP = 0; 
+        x_pid.kI = 0; 
+        x_pid.kD = 0;
+
+        // Truncate to int, clamp 8 bit value
+        int x_pid_out = (int)(x_pid.update(x_vel));
+
+        theta_pid.kS = 0;
+        theta_pid.kV = 0;
+        theta_pid.kP = 0;
+        theta_pid.kI = 0;
+        theta_pid.kD = 0;
+
+        // Truncate to int, clamp 8 bit value
+        int theta_pid_out = (int)(theta_pid.update(rot_vel));
+
+        int left_motors = x_pid_out - theta_pid_out;
+        int right_motors = x_pid_out + theta_pid_out;
+
+        uint8_t left_motors_u8 = clamp(left_motors, 0, 255);
+        uint8_t right_motors_u8 = clamp(right_motors, 0, 255);
+        
+        // =============== Send Data (To Pico) ===============
+        if(fd != -1)
+        {
+            char buffer[80];
+            sprintf(buffer, "%u %u", left_motors_u8, right_motors_u8);
+            serialPuts(fd, buffer);
+        }
 
         r.sleep();
     }

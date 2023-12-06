@@ -1,5 +1,0 @@
-int8 teleop_tank_L
-int8 teleop_tank_R
-int16 auto_tank_L_mmps
-int16 auto_tank_R_mmps
-bool en_teleop
