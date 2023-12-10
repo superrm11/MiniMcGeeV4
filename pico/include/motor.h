@@ -16,7 +16,7 @@ typedef struct motor_s
  * Works with L298 / L9110 / other H-bridge drivers
  * 
  * Initialize PWM on specified pins with a granularity of 1/127 (Forward pin)
- * and 1/128 (Reverse pin), and enable the signals. Default value is 0.
+ * and 1/127 (Reverse pin), and enable the signals. Default value is 0.
  * 
  * If motor is reversed, swap the pins' placement
  * 
@@ -35,7 +35,7 @@ motor_t* motor_init(uint pin1, uint pin2);
 void motor_free(motor_t *motor);
 
 /**
- * Set the motor either forward or reverse (-128 -> 127)
+ * Set the motor either forward or reverse (-127 -> 127)
  * 0 is stopped
  * 
  * Follows generic H-bridge setup

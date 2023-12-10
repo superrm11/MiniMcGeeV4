@@ -13,7 +13,7 @@ struct pose_s
 };
 
 extern int fd;
-extern std::atomic<int> x_mmps_setpt, theta_mmps_setpt;
+extern std::atomic<double> x_mmps_setpt, theta_mmps_setpt;
 extern nav_msgs::Odometry odom;
 extern int line_sensor;
 

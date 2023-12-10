@@ -109,6 +109,8 @@ int main()
 
     uint16_t sensor_vals[3];
 
+    absolute_time_t motor_watchdog_tmr = get_absolute_time();
+
     while(true)
     {
         as5600_get_continuous(L_ENC_I2C, &l_enc_ticks_abs);
@@ -120,46 +122,61 @@ int main()
         
         odometry_update(&odom, l_enc, r_enc);
 
+        // Read all characters available in the buffer
+        char in = getchar_timeout_us(0);
+        char buffer[80];
+        int index = 0;
+        while (in != PICO_ERROR_TIMEOUT)
+        {
+            // Avoid buffer overflow
+            if (index >= 80)
+                break;
+
+            buffer[index++] = in;
+
+            if(in == '\0')
+                break;
+
+            in = getchar_timeout_us(0);
+        }
+
+        static int left_sp = 0;
+        static int right_sp = 0;
+
+        char *token = strtok(buffer, " ");
+        index = 0;
+        while(token != NULL)
+        {
+            if (index == 0)
+                left_sp = atoi(token);
+            else if (index == 1)
+                right_sp = atoi(token);
+            
+            if(index == 1)
+                motor_watchdog_tmr = get_absolute_time();
+
+            token = strtok(NULL, " ");
+            index++;
+        }
+
+        // 1 second serial timeout, disable motors for safety
+        if(us_to_ms(absolute_time_diff_us(motor_watchdog_tmr, get_absolute_time())) > 1000)
+        {
+            left_sp = 0;
+            right_sp = 0;
+        }
+
+        motor_set(left_front, (int8_t)left_sp);
+        motor_set(left_rear, (int8_t)left_sp);
+        motor_set(right_front, (int8_t)right_sp);
+        motor_set(right_rear, (int8_t)right_sp);
         // Line Sensor: 0 = too far left, 2000 = too far right
-        printf("%d %d %d %d %d %d %u\n", 
+        printf("%d %d %d %d %d %d %u %d %d\n", 
             (int)odom.x_mm, (int)odom.y_mm, (int)odom.rot_deg,
             (int)odom.x_mmps, (int)odom.y_mmps, (int)odom.rot_degps,
-            qtr.readLineBlack(sensor_vals));
-        // printf("%u\n", qtr.readLineBlack(sensor_vals));
+            qtr.readLineBlack(sensor_vals), left_sp, right_sp);
 
-        // Read all characters available in the buffer
-        // char in = getchar_timeout_us(0);
-        // char buffer[80];
-        // int index = 0;
-        // while (in != PICO_ERROR_TIMEOUT)
-        // {
-        //     // Avoid buffer overflow
-        //     if (index >= 80)
-        //         break;
-
-        //     buffer[index++] = in;
-
-        //     if(in == '\0')
-        //         break;
-
-        //     in = getchar_timeout_us(0);
-        // }
-
-        // int left_sp = 0;
-        // int right_sp = 0;
-
-        // char *token = strtok(buffer, " ");
-        // index = 0;
-        // while(token != NULL)
-        // {
-        //     if (index == 0)
-        //         left_sp = atoi(token);
-        //     else if (index == 1)
-        //         right_sp = atoi(token);
-            
-        //     token = strtok(NULL, " ");
-        //     index++;
-        // }
+        
 
         sleep_ms(100);
     }

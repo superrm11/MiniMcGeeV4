@@ -6,7 +6,7 @@
  * Works with L298 / L9110 / other H-bridge drivers
  * 
  * Initialize PWM on specified pins with a granularity of 1/127 (Forward pin)
- * and 1/128 (Reverse pin), and enable the signals. Default value is 0.
+ * and 1/127 (Reverse pin), and enable the signals. Default value is 0.
 */
 motor_t *motor_init(uint pin1, uint pin2)
 {
@@ -54,10 +54,6 @@ void motor_free(motor_t *motor)
 */
 void motor_set(motor_t *motor, int8_t value)
 {
-    // Don't set PWM if we don't need to
-    if(value == motor->value)
-        return;
-
     motor->value = value;
     
     // 0 speed: coast mode (no movement or resistance)
