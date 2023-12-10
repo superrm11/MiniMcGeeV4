@@ -111,6 +111,8 @@ void line_following()
     line_pid.target = 0;
     line_pid.update(line_adjusted);
 
+    x_mmps_setpt = LINE_BASE_MMPS;
+    theta_mmps_setpt = line_pid.out;
 
 }
 

@@ -4,10 +4,14 @@
 #include <pico/stdlib.h>
 #include <hardware/i2c.h>
 #include <hardware/pwm.h>
+#include <cmath>
+#include <pico/time.h>
 #include "motor.h"
 #include "as5600.h"
 #include "odometry.h"
 #include "QTRSensors.h"
+
+#define millis() to_ms_since_boot(get_absolute_time())
 
 // MINIMCGEE PINOUT:
 // Pin:     Function:
@@ -48,10 +52,10 @@
 #define LR_PWM2 6 //LR Backwards
 #define LR_PWM1 7 //LR Forwards
 
-#define QTR_EMIT 0
-#define QTR_L 0
-#define QTR_M 0
-#define QTR_R 0
+#define QTR_EMIT 21
+#define QTR_L 18
+#define QTR_M 19
+#define QTR_R 20
 
 motor_t *left_front, *left_rear, *right_front, *right_rear;
 
@@ -94,6 +98,15 @@ int main()
     qtr.setTypeRC();
     qtr.setEmitterPin(QTR_EMIT);
     qtr.setSensorPins((const uint8_t[]){QTR_L, QTR_M, QTR_R}, 3);
+    qtr.setDimmable();
+    qtr.setDimmingLevel(0);
+    
+    absolute_time_t start = get_absolute_time();
+    while(us_to_ms(absolute_time_diff_us(start, get_absolute_time())) < 10000)
+    {
+        qtr.calibrate();
+    }
+
     uint16_t sensor_vals[3];
 
     while(true)
@@ -106,54 +119,48 @@ int main()
 
         
         odometry_update(&odom, l_enc, r_enc);
-        printf("%d %d %d %d %d %d %d\n", 
+
+        // Line Sensor: 0 = too far left, 2000 = too far right
+        printf("%d %d %d %d %d %d %u\n", 
             odom.x_mm, odom.y_mm, odom.rot_deg,
             odom.x_mmps, odom.y_mmps, odom.rot_degps,
             qtr.readLineBlack(sensor_vals));
-
+        // printf("%u\n", qtr.readLineBlack(sensor_vals));
 
         // Read all characters available in the buffer
-        char in = getchar_timeout_us(0);
-        char buffer[80];
-        int index = 0;
-        while (in != PICO_ERROR_TIMEOUT)
-        {
-            // Avoid buffer overflow
-            if (index >= 80)
-                break;
+        // char in = getchar_timeout_us(0);
+        // char buffer[80];
+        // int index = 0;
+        // while (in != PICO_ERROR_TIMEOUT)
+        // {
+        //     // Avoid buffer overflow
+        //     if (index >= 80)
+        //         break;
 
-            buffer[index++] = in;
+        //     buffer[index++] = in;
 
-            if(in == '\0')
-                break;
+        //     if(in == '\0')
+        //         break;
 
-            in = getchar_timeout_us(0);
-        }
+        //     in = getchar_timeout_us(0);
+        // }
 
-        int left_sp = 0;
-        int right_sp = 0;
+        // int left_sp = 0;
+        // int right_sp = 0;
 
-        char *token = strtok(buffer, " ");
-        index = 0;
-        while(token != NULL)
-        {
-            if (index == 0)
-                left_sp = atoi(token);
-            else if (index == 1)
-                right_sp = atoi(token);
+        // char *token = strtok(buffer, " ");
+        // index = 0;
+        // while(token != NULL)
+        // {
+        //     if (index == 0)
+        //         left_sp = atoi(token);
+        //     else if (index == 1)
+        //         right_sp = atoi(token);
             
-            token = strtok(NULL, " ");
-            index++;
-        }
+        //     token = strtok(NULL, " ");
+        //     index++;
+        // }
 
-        // uint16_t r_enc = as5600_read_angle(R_ENC_I2C);
-        // uint16_t l_enc = as5600_read_angle(L_ENC_I2C);
-        // printf("L Enc: %lld, R Enc: %lld\n ", l_enc, r_enc);
-        // printf("left: %d, ri
-        // char* tmp = 0;ght: %d\n", 0, r_enc);
-        // motor_set(left_front, 127);
-        // sleep_ms(1000);
-        // motor_set(left_front, 0);
         sleep_ms(100);
     }
 

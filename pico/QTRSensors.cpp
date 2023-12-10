@@ -2,9 +2,9 @@
 #include <pico/stdlib.h>
 #include <stdlib.h>
 #include <pico/time.h>
+#include <pico/sync.h>
 
 // === Start Arduino Compatibiltiy Layer ===
-#define micros() to_us_since_boot(get_absolute_time())
 
 #define OUTPUT GPIO_OUT
 #define INPUT GPIO_IN
@@ -15,6 +15,7 @@ void pinMode(uint gpio, int dir)
 {
   gpio_init(gpio);
   gpio_set_dir(gpio, dir);
+  gpio_disable_pulls(gpio);
 }
 
 int digitalRead(uint gpio)
@@ -33,8 +34,14 @@ int analogRead(uint gpio)
   return 0;
 }
 
-void noInterrupts() {}
-void interrupts() {}
+uint32_t int_status = 0;
+
+void noInterrupts() {
+  int_status = save_and_disable_interrupts();
+}
+void interrupts() {
+  restore_interrupts(int_status);
+}
 
 // === End Arduino Compatibiltiy Layer ===
 
@@ -188,7 +195,7 @@ void QTRSensors::emittersOff(QTREmitters emitters, bool wait)
 void QTRSensors::emittersOn(QTREmitters emitters, bool wait)
 {
   bool pinChanged = false;
-  uint16_t emittersOnStart;
+  absolute_time_t emittersOnStart;
 
   // Use odd emitter pin in these cases:
   // - 1 emitter pin, emitters = all
@@ -234,7 +241,7 @@ void QTRSensors::emittersOn(QTREmitters emitters, bool wait)
       // Make sure it's been at least 300 us since the emitter pin was first set
       // high before returning. (Driver min is 250 us.) Some time might have
       // already passed while we set the dimming level.
-      while ((uint16_t)(micros() - emittersOnStart) < 300)
+      while (absolute_time_diff_us(emittersOnStart, get_absolute_time()) < 300)
       {
         sleep_us(10);
       }
@@ -248,7 +255,7 @@ void QTRSensors::emittersOn(QTREmitters emitters, bool wait)
 
 // assumes pin is valid (not QTRNoEmitterPin)
 // returns time when pin was first set high (used by emittersSelect())
-uint16_t QTRSensors::emittersOnWithPin(uint8_t pin)
+absolute_time_t QTRSensors::emittersOnWithPin(uint8_t pin)
 {
   if (_dimmable && (digitalRead(pin) == HIGH))
   {
@@ -261,7 +268,7 @@ uint16_t QTRSensors::emittersOnWithPin(uint8_t pin)
   }
 
   digitalWrite(pin, HIGH);
-  uint16_t emittersOnStart = micros();
+  absolute_time_t emittersOnStart = get_absolute_time();
 
   if (_dimmable && (_dimmingLevel > 0))
   {
@@ -309,7 +316,7 @@ void QTRSensors::emittersSelect(QTREmitters emitters)
 
   // Turn off the off-emitters; don't wait before proceeding, but record the time.
   emittersOff(offEmitters, false);
-  uint16_t turnOffStart = micros();
+  absolute_time_t turnOffStart = get_absolute_time();
 
   // Turn on the on-emitters and wait.
   emittersOn(emitters);
@@ -320,7 +327,7 @@ void QTRSensors::emittersSelect(QTREmitters emitters)
     // at least 1200 us since the off-emitters was turned off before returning.
     // (Driver min is 1 ms.) Some time has already passed while we waited for
     // the on-emitters to turn on.
-    while ((uint16_t)(micros() - turnOffStart) < 1200)
+    while (absolute_time_diff_us(turnOffStart, get_absolute_time()) < 1200)
     {
       sleep_us(10);
     }
@@ -617,7 +624,7 @@ void QTRSensors::readPrivate(uint16_t * sensorValues, uint8_t start, uint8_t ste
         // record start time before the first sensor is switched to input
         // (similarly, time is checked before the first sensor is read in the
         // loop below)
-        uint32_t startTime = micros();
+        absolute_time_t startTime = get_absolute_time();
         uint16_t time = 0;
 
         for (uint8_t i = start; i < _sensorCount; i += step)
@@ -634,7 +641,7 @@ void QTRSensors::readPrivate(uint16_t * sensorValues, uint8_t start, uint8_t ste
           // time as possible
           noInterrupts();
 
-          time = micros() - startTime;
+          time = absolute_time_diff_us(startTime, get_absolute_time());
           for (uint8_t i = start; i < _sensorCount; i += step)
           {
             if ((digitalRead(_sensorPins[i]) == LOW) && (time < sensorValues[i]))

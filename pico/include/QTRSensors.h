@@ -3,6 +3,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <hardware/timer.h>
 
 /// \brief Emitter behavior when taking readings.
 ///
@@ -549,7 +550,7 @@ class QTRSensors
 
   private:
 
-    uint16_t emittersOnWithPin(uint8_t pin);
+    absolute_time_t emittersOnWithPin(uint8_t pin);
 
     // Handles the actual calibration, including (re)allocating and
     // initializing the storage for the calibration values if necessary.
