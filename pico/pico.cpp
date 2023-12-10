@@ -102,10 +102,10 @@ int main()
     qtr.setDimmingLevel(0);
     
     absolute_time_t start = get_absolute_time();
-    while(us_to_ms(absolute_time_diff_us(start, get_absolute_time())) < 10000)
-    {
-        qtr.calibrate();
-    }
+    // while(us_to_ms(absolute_time_diff_us(start, get_absolute_time())) < 10000)
+    // {
+    //     qtr.calibrate();
+    // }
 
     uint16_t sensor_vals[3];
 
@@ -122,8 +122,8 @@ int main()
 
         // Line Sensor: 0 = too far left, 2000 = too far right
         printf("%d %d %d %d %d %d %u\n", 
-            odom.x_mm, odom.y_mm, odom.rot_deg,
-            odom.x_mmps, odom.y_mmps, odom.rot_degps,
+            (int)odom.x_mm, (int)odom.y_mm, (int)odom.rot_deg,
+            (int)odom.x_mmps, (int)odom.y_mmps, (int)odom.rot_degps,
             qtr.readLineBlack(sensor_vals));
         // printf("%u\n", qtr.readLineBlack(sensor_vals));
 

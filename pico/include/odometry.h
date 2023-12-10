@@ -4,15 +4,15 @@
 
 typedef struct odometry_s
 { 
-    int whealbase_mm;
-    int wheel_diam_mm;
+    double whealbase_mm;
+    double wheel_diam_mm;
     int enc_cpr;
-    int x_mm;
-    int y_mm;
-    int rot_deg;
-    int x_mmps;
-    int y_mmps;
-    int rot_degps;
+    double x_mm;
+    double y_mm;
+    double rot_deg;
+    double x_mmps;
+    double y_mmps;
+    double rot_degps;
     int64_t stored_l_enc;
     int64_t stored_r_enc;
 } odometry_t;
