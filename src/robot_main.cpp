@@ -4,9 +4,9 @@
 #include <thread>
 #include <atomic>
 #include <wiringSerial.h>
-// #include <image_transport/image_transport.h>
-// #include <cv_bridge/cv_bridge.h>
-// #include <opencv2/highgui.hpp>
+#include <image_transport/image_transport.h>
+#include <cv_bridge/cv_bridge.h>
+#include <opencv2/highgui.hpp>
 
 #include "ros/ros.h"
 #include "nav_msgs/Odometry.h"
@@ -15,7 +15,6 @@
 #include "pidff.h"
 #include "operations.h"
 #include "moving_avg.h"
-#include "wiringPi.h"
 
 /**
  * Parse control data and send to pico
@@ -32,23 +31,21 @@ void twist_callback(const geometry_msgs::Twist::ConstPtr& ros_data)
 
 MovingAverage mav(20);
 
-// void image_callback(const sensor_msgs::ImageConstPtr& img_data)
-// {
-//     cv::Mat depth_img = cv_bridge::toCvShare(img_data)->image;
-//     // printf("width: %d, height: %d\n", depth_img.cols, depth_img.rows);
+void image_callback(const sensor_msgs::ImageConstPtr& img_data)
+{
+    cv::Mat depth_img = cv_bridge::toCvShare(img_data)->image;
+    printf("width: %d, height: %d\n", depth_img.cols, depth_img.rows);
     
-//     cv::Mat crop = depth_img(cv::Range((720/2)-50, (720/2)+50), cv::Range((1280/2)-50, (1280/2)+50));
-//     mav.update(cv::mean(crop).val[0]);
-//     printf("val: %f\n", mav.out);
-//     cam_val = mav.out;
-//     cv::imshow("depth", crop * 16);
-// }
+    cv::Mat crop = depth_img(cv::Range((720/2)-50, (720/2)+50), cv::Range((1280/2)-50, (1280/2)+50));
+    mav.update(cv::mean(crop).val[0]);
+    printf("val: %f\n", mav.out);
+    cam_val = mav.out;
+    cv::imshow("depth", crop * 16);
+}
 
 int main(int argc, char** argv)
 {
     // ======== ROS initialization ========
-
-    wiringPiSetup();
 
     ros::init(argc, argv, "robot");
 
@@ -56,11 +53,11 @@ int main(int argc, char** argv)
     ros::Subscriber ctrl_sub = n.subscribe("key_vel", 1000, twist_callback);
     ros::Publisher odom_pub = n.advertise<nav_msgs::Odometry>("odom", 50);
 
-    // cv::namedWindow("depth");
-    // cv::startWindowThread();
+    cv::namedWindow("depth");
+    cv::startWindowThread();
 
-    // image_transport::ImageTransport it(n);
-    // image_transport::Subscriber it_sub = it.subscribe("/oak/stereo/image_raw", 1, image_callback);
+    image_transport::ImageTransport it(n);
+    image_transport::Subscriber it_sub = it.subscribe("/oak/stereo/image_raw", 1, image_callback);
 
     bool follow_line;
     bool retval = n.getParam("line", follow_line);
@@ -194,7 +191,7 @@ int main(int argc, char** argv)
         r.sleep();
     }
     
-    // cv::destroyAllWindows();
+    cv::destroyAllWindows();
 
     //TODO handle sigint / close serial & threads cleanly
 

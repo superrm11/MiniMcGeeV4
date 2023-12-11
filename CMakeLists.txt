@@ -13,9 +13,10 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   cv_bridge
   image_transport
-  # OpenCV
   # message_generation
 )
+
+find_package(OpenCV 4 REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -122,7 +123,7 @@ catkin_package(
 include_directories(
 # include
   ${catkin_INCLUDE_DIRS}
-  # ${OpenCV_INCLUDE_DIRS}
+  ${OpenCV_INCLUDE_DIRS}
   include/
 )
 
@@ -155,7 +156,7 @@ add_dependencies(${PROJECT_NAME}_robot ${${PROJECT_NAME}_EXPORTED_TARGETS} ${cat
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_robot
   ${catkin_LIBRARIES}
-  # ${OpenCV_LIBRARIES}
+  ${OpenCV_LIBRARIES}
   wiringPi
   pthread
 )
