@@ -36,11 +36,11 @@ void image_callback(const sensor_msgs::ImageConstPtr& img_data)
     cv::Mat depth_img = cv_bridge::toCvShare(img_data)->image;
     printf("width: %d, height: %d\n", depth_img.cols, depth_img.rows);
     
-    cv::Mat crop = depth_img(cv::Range((720/2)-50, (720/2)+50), cv::Range((1280/2)-50, (1280/2)+50));
+    cv::Mat crop = depth_img(cv::Range(720-100, 720), cv::Range((1280/2)-50, (1280/2)+50));
     mav.update(cv::mean(crop).val[0]);
     printf("val: %f\n", mav.out);
     cam_val = mav.out;
-    cv::imshow("depth", crop * 16);
+    // cv::imshow("depth", crop * 16);
 }
 
 int main(int argc, char** argv)
@@ -50,11 +50,11 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "robot");
 
     ros::NodeHandle n("~");
-    ros::Subscriber ctrl_sub = n.subscribe("key_vel", 1000, twist_callback);
-    ros::Publisher odom_pub = n.advertise<nav_msgs::Odometry>("odom", 50);
+    ros::Subscriber ctrl_sub = n.subscribe("/key_vel", 1000, twist_callback);
+    ros::Publisher odom_pub = n.advertise<nav_msgs::Odometry>("/odom", 50);
 
-    cv::namedWindow("depth");
-    cv::startWindowThread();
+    // cv::namedWindow("depth");
+    // cv::startWindowThread();
 
     image_transport::ImageTransport it(n);
     image_transport::Subscriber it_sub = it.subscribe("/oak/stereo/image_raw", 1, image_callback);
@@ -70,10 +70,16 @@ int main(int argc, char** argv)
     ros::Time last_time, cur_time;
 
     // ======== Serial initialization ========
-    fd = serialOpen("/dev/ttyACM0", 115200);
+    fd = serialOpen("/dev/ttyACM1", 115200);
     if(fd == -1)
     {
-        perror("Unable to open serial port!\n");
+        perror("Unable to open Pico serial port!\n");
+    }
+
+    dist_fd = serialOpen("/dev/ttyACM0", 115200);
+    if(dist_fd == -1)
+    {
+        perror("Unable to open Arduino serial port!\n");
     }
 
     // =============== Main Loop ===============
@@ -83,18 +89,35 @@ int main(int argc, char** argv)
         
         ros::spinOnce();
 
-
-        // =============== Receive Data (From Pico) ===============
         #define BUFFER_LEN 80
-        char buffer[BUFFER_LEN];
         int i = 0;
         bool newData = false;
+        // =============== Receive Data (From Arduino) ===============
+        char buffer_dist[BUFFER_LEN];
+        while(dist_fd != -1 && serialDataAvail(dist_fd) && i < BUFFER_LEN-1)
+        {
+            newData = true;
+            buffer_dist[i++] = serialGetchar(dist_fd);
+        }
+        buffer_dist[i] = '\0';
+
+        if(newData)
+        {
+            dist_sensor = atoi(buffer_dist);
+            printf("Dist: %d\n", dist_sensor);
+        }
+
+        // =============== Receive Data (From Pico) ===============
+        
+        char buffer_pico[BUFFER_LEN];
+        i = 0;
+        newData = false;
         while(fd != -1 && serialDataAvail(fd) && i < BUFFER_LEN-1)
         {
             newData = true;
-            buffer[i++] = serialGetchar(fd);
+            buffer_pico[i++] = serialGetchar(fd);
         }
-        buffer[i] = '\0';
+        buffer_pico[i] = '\0';
 
 
         if(newData)
@@ -102,7 +125,7 @@ int main(int argc, char** argv)
             #define TOKEN_LEN 20
             char* token[TOKEN_LEN];
             int i = 0;
-            token[i] = strtok(buffer, " ");
+            token[i] = strtok(buffer_pico, " ");
             while(token[i++] != NULL && i < TOKEN_LEN)
             {
                 token[i] = strtok(NULL, " ");
@@ -150,7 +173,7 @@ int main(int argc, char** argv)
 
         x_pid.kS = 0;
         x_pid.kV = 0.18;  // measured 427 mmps at 80 speed
-        x_pid.kP = 0.1; 
+        x_pid.kP = 0.05; 
         x_pid.kI = 0; 
         x_pid.kD = 0;
 
@@ -191,7 +214,7 @@ int main(int argc, char** argv)
         r.sleep();
     }
     
-    cv::destroyAllWindows();
+    // cv::destroyAllWindows();
 
     //TODO handle sigint / close serial & threads cleanly
 

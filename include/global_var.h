@@ -12,10 +12,11 @@ struct pose_s
     int r;
 };
 
-extern int fd;
+extern int fd, dist_fd;
 extern std::atomic<double> x_mmps_setpt, theta_mmps_setpt;
 extern nav_msgs::Odometry odom;
 extern int line_sensor;
+extern int dist_sensor;
 extern bool enableTwistCallback;
 extern double cam_val;
 

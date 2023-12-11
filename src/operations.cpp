@@ -13,14 +13,15 @@ double smallest_angle(double start_deg, double end_deg)
   // Get the closest angle, now between -180 (turn left) and +180 (turn right)
   if(retval > 180)
     retval -= 360;
-OdometryBase:
+    
   return retval;
 }
 
 bool turn_deg(int deg, int speed_degps)
 {
     static PIDFF pid;
-    pid.kP = 0;
+    // pid.kS = 15;
+    pid.kP = 4;
     pid.target = deg;
 
     static bool init = false;
@@ -50,10 +51,53 @@ bool turn_deg(int deg, int speed_degps)
     return false;
 }
 
+bool turn_sec(double sec, int speed_degps)
+{
+    static bool init = false;
+    static ros::Time start_time;
+    if(!init)
+    {
+        start_time = ros::Time::now();
+        init = true;
+    }
+
+    x_mmps_setpt = 0;
+    theta_mmps_setpt = speed_degps;
+
+    if((ros::Time::now() - start_time).toSec() > sec)
+    {
+        init = false;
+        return true;
+    }
+    return false;
+}
+
+bool drive_sec(double sec, int speed_mmps)
+{
+    static bool init = false;
+    static ros::Time start_time;
+    if(!init)
+    {
+        start_time = ros::Time::now();
+        init = true;
+    }
+
+    x_mmps_setpt = speed_mmps;
+    theta_mmps_setpt = 0;
+
+    if((ros::Time::now() - start_time).toSec() > sec)
+    {
+        init = false;
+        return true;
+    }
+    return false;
+}
+
 bool drive_mm(int x, int speed_mmps)
 {
     static PIDFF pid;
-    pid.kP = 0;
+    // pid.kS = 15;
+    pid.kP = 4;
     pid.target = x;
 
     static bool init = false;
@@ -97,28 +141,86 @@ void get_depth()
     
 }
 
-#define LINE_BASE_MMPS 120 //Tune
+#define LINE_BASE_MMPS 110 //Tune
 
 // Input: 0 -> 2000 (1000 = center)
 // Line Sensor: 0 = Too Far Left! 2000 = Too Far Right!
 PIDFF line_pid;
+
+enum LineState 
+{
+    LINE, TURN1, DRIVE1, TURN2, DRIVE2, TURN3
+};
+
+LineState cur_state = LINE;
 
 void line_following()
 {
     enableTwistCallback = false;
     int line_adjusted = -(line_sensor - 1000);
 
-    line_pid.kS = 0;
-    line_pid.kV = 0;
-    line_pid.kP = 0.03;
-    line_pid.kI = 0;
-    line_pid.kD = 0;
-    
-    line_pid.target = 0;
-    line_pid.update(line_adjusted);
+    switch(cur_state)
+    {
+        case LINE:
+        line_pid.kS = 0;
+        line_pid.kV = 0;
+        line_pid.kP = 0.02;
+        line_pid.kI = 0;
+        line_pid.kD = 0;
+        
+        line_pid.target = 0;
+        line_pid.update(line_adjusted);
 
-    x_mmps_setpt = LINE_BASE_MMPS - fabs(line_pid.error*.05);
-    theta_mmps_setpt = line_pid.out;
+        static ros::Time tm = ros::Time::now();
+
+        if(line_sensor == 0 || line_sensor == 2000)
+        {
+            if((ros::Time::now() - tm).toSec() > 0.5)
+            {
+                x_mmps_setpt = 0;
+                theta_mmps_setpt = line_pid.out * 2.5;
+            }
+        }else
+        {
+            tm = ros::Time::now();
+            x_mmps_setpt = LINE_BASE_MMPS - fabs(line_pid.error*.01);
+            theta_mmps_setpt = line_pid.out;
+        }
+
+        // x_mmps_setpt = LINE_BASE_MMPS;
+        // theta_mmps_setpt = 0;
+
+        // if(dist_sensor < 120)
+        //     cur_state = TURN1;
+
+        break;
+        case TURN1:
+        if(turn_sec(0.15, 80))
+            cur_state = DRIVE1;
+
+        break;
+        case DRIVE1:
+        if(drive_sec(2, 120))
+            cur_state = TURN2;
+
+        break;
+        case TURN2:
+        if(turn_sec(0.5, -80))
+            cur_state = DRIVE2;
+        
+        break;
+        case DRIVE2:
+        if(drive_sec(2, 120))
+            cur_state = LINE;
+
+        break;
+        // case TURN3:
+        // if(turn_sec(0.2, -80))
+        //     cur_state = LINE;
+        // break;
+    }
+    
+    
 
 }
 
