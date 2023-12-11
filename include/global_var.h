@@ -16,6 +16,8 @@ extern int fd;
 extern std::atomic<double> x_mmps_setpt, theta_mmps_setpt;
 extern nav_msgs::Odometry odom;
 extern int line_sensor;
+extern bool enableTwistCallback;
+extern double cam_val;
 
 double deg2rad(double theta);
 double rad2deg(double theta);

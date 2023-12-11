@@ -98,14 +98,18 @@ int main()
     qtr.setTypeRC();
     qtr.setEmitterPin(QTR_EMIT);
     qtr.setSensorPins((const uint8_t[]){QTR_L, QTR_M, QTR_R}, 3);
-    qtr.setDimmable();
-    qtr.setDimmingLevel(0);
+    // qtr.setDimmable();
+    // qtr.setDimmingLevel(0);
     
+    gpio_init(25);
+    gpio_set_dir(25, GPIO_OUT);
+    gpio_put(25, 1);
     absolute_time_t start = get_absolute_time();
-    // while(us_to_ms(absolute_time_diff_us(start, get_absolute_time())) < 10000)
-    // {
-    //     qtr.calibrate();
-    // }
+    while(us_to_ms(absolute_time_diff_us(start, get_absolute_time())) < 10000)
+    {
+        qtr.calibrate();
+    }
+    gpio_put(25, 0);
 
     uint16_t sensor_vals[3];
 
@@ -166,10 +170,11 @@ int main()
             right_sp = 0;
         }
 
-        motor_set(left_front, (int8_t)left_sp);
-        motor_set(left_rear, (int8_t)left_sp);
-        motor_set(right_front, (int8_t)right_sp);
-        motor_set(right_rear, (int8_t)right_sp);
+        motor_set(left_front, left_sp);
+        motor_set(left_rear, left_sp);
+        motor_set(right_front, right_sp);
+        motor_set(right_rear, right_sp);
+
         // Line Sensor: 0 = too far left, 2000 = too far right
         printf("%d %d %d %d %d %d %u %d %d\n", 
             (int)odom.x_mm, (int)odom.y_mm, (int)odom.rot_deg,

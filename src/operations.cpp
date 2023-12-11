@@ -92,31 +92,38 @@ bool drive_mm(int x, int speed_mmps)
     return false;
 }
 
-#define LINE_BASE_MMPS 50 //Tune
+void get_depth()
+{
+    
+}
+
+#define LINE_BASE_MMPS 120 //Tune
 
 // Input: 0 -> 2000 (1000 = center)
-// Ouptut: 0 -> max ()
+// Line Sensor: 0 = Too Far Left! 2000 = Too Far Right!
 PIDFF line_pid;
 
 void line_following()
 {
-    int line_adjusted = line_sensor - 1000;
+    enableTwistCallback = false;
+    int line_adjusted = -(line_sensor - 1000);
 
     line_pid.kS = 0;
     line_pid.kV = 0;
-    line_pid.kP = 0;
+    line_pid.kP = 0.03;
     line_pid.kI = 0;
     line_pid.kD = 0;
     
     line_pid.target = 0;
     line_pid.update(line_adjusted);
 
-    x_mmps_setpt = LINE_BASE_MMPS;
+    x_mmps_setpt = LINE_BASE_MMPS - fabs(line_pid.error*.05);
     theta_mmps_setpt = line_pid.out;
 
 }
 
 void mapping()
 {
+    enableTwistCallback = true;
 
 }

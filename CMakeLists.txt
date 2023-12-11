@@ -7,9 +7,13 @@ project(minimcgeev4)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
+# set(OpenCV_DIR=/usr/lib/x86_64-linux-gnu/cmake/opencv4)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
+  cv_bridge
+  image_transport
+  # OpenCV
   # message_generation
 )
 
@@ -118,6 +122,7 @@ catkin_package(
 include_directories(
 # include
   ${catkin_INCLUDE_DIRS}
+  # ${OpenCV_INCLUDE_DIRS}
   include/
 )
 
@@ -134,7 +139,7 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(${PROJECT_NAME}_robot src/robot_main.cpp src/pidff.cpp src/global_var.cpp src/operations.cpp)
+add_executable(${PROJECT_NAME}_robot src/robot_main.cpp src/pidff.cpp src/global_var.cpp src/operations.cpp src/moving_avg.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -150,6 +155,7 @@ add_dependencies(${PROJECT_NAME}_robot ${${PROJECT_NAME}_EXPORTED_TARGETS} ${cat
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_robot
   ${catkin_LIBRARIES}
+  # ${OpenCV_LIBRARIES}
   wiringPi
   pthread
 )
